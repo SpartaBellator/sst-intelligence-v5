@@ -1,3 +1,4 @@
+import os
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -15,7 +16,8 @@ from datetime import datetime, timedelta
 from database import SessionLocal, init_db, Conversation, Message, engine, Base
 
 # --- CONFIGURAÇÃO DA INTELIGÊNCIA ARTIFICIAL ---
-genai.configure(api_key="AIzaSyAGlJyV_95lFTb73Ee_PKFfBtIVAj9pzsg")
+gemini_key = os.getenv("GEMINI_API_KEY") 
+genai.configure(api_key=gemini_key)
 model = genai.GenerativeModel('gemini-3.1-flash-lite')
 
 # Inicialização do Banco de Dados SQLite
