@@ -54,7 +54,7 @@ export function Sidebar({
   useEffect(() => {
     const fetchConversations = async () => {
       try {
-        const response = await fetch(`http://127.0.0.1:8000/conversations?t=${Date.now()}`);
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://sst-intelligence-backend.onrender.com'}/conversations?t=${Date.now()}`);
         if (!response.ok) throw new Error('Falha na resposta');
         const data = await response.json();
         setConversas(data);

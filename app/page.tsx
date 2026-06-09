@@ -117,7 +117,7 @@ export default function SSTIntelligencePage() {
     try {
       // 4. Chamadas de Rede
       if (isReport) {
-        const response = await fetch('http://127.0.0.1:8000/chat/anonymous-report', {
+        const response = await fetch("https://sst-intelligence-backend.onrender.com/chat/create", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
@@ -128,7 +128,7 @@ export default function SSTIntelligencePage() {
         setIsLoading(false);
 
       } else if (!currentChatId) {
-        const response = await fetch('http://127.0.0.1:8000/chat/create', {
+        const response = await fetch("https://sst-intelligence-backend.onrender.com/chat/create", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
@@ -143,7 +143,7 @@ export default function SSTIntelligencePage() {
         // --- LÓGICA DE STREAMING CORRIGIDA E RESTAURADA ---
         setMessages((prev) => [...prev, { role: "assistant", content: "", userName: "SST AI", timestamp: new Date().toLocaleTimeString() }]);
         
-        const response = await fetch(`http://127.0.0.1:8000/chat/${currentChatId}/stream`, {
+        const response = await fetch(`https://sst-intelligence-backend.onrender.com/chat/${currentChatId}/stream`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
@@ -182,7 +182,7 @@ export default function SSTIntelligencePage() {
 
   const handleRenameChat = async (chatId: string, newTitle: string) => {
     try {
-      const response = await fetch(`http://127.0.0.1:8000/chat/${chatId}/rename`, {
+      const response = await fetch(`https://sst-intelligence-backend.onrender.com/chat/${chatId}/rename`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title: newTitle }),
@@ -210,7 +210,7 @@ export default function SSTIntelligencePage() {
     setIsLoading(true);
 
     try {
-      const response = await fetch(`http://127.0.0.1:8000/chat/${id}/messages`);
+      const response = await fetch(`https://sst-intelligence-backend.onrender.com/chat/${id}/messages`);
       const data = await response.json();
       
       const formatTime = (dateString: string) => {
@@ -240,7 +240,7 @@ export default function SSTIntelligencePage() {
 
   const handleDeleteConversation = async (id: string) => {
     try {
-      const response = await fetch(`http://127.0.0.1:8000/chat/${id}`, { method: "DELETE" });
+      const response = await fetch(`https://sst-intelligence-backend.onrender.com/chat/${id}`, { method: "DELETE" });
       if (!response.ok) throw new Error("Erro ao deletar do servidor");
 
       if (currentChatId === id) {
