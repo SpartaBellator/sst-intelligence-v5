@@ -18,7 +18,7 @@ from database import SessionLocal, init_db, Conversation, Message, engine, Base
 # --- CONFIGURAÇÃO DA INTELIGÊNCIA ARTIFICIAL ---
 gemini_key = os.getenv("GEMINI_API_KEY") 
 genai.configure(api_key=gemini_key)
-model = genai.GenerativeModel('gemini-3.1-flash-lite')
+model = genai.GenerativeModel('gemini-1.5-flash')
 
 # Inicialização do Banco de Dados SQLite
 init_db()
