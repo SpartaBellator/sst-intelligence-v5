@@ -64,21 +64,24 @@ class ChatRequest(BaseModel):
     message: str
     image_data: Optional[str] = None 
     user_name: Optional[str] = "Usuário"
+    user_id: str
 
 class RenameRequest(BaseModel):
     title: str
+    user_id: str
 
 
 # =====================================================================
-# ROTAS DO ASSISTENTE VIRTUAL (SST INTELLIGENCE)
+# ROTAS DO ASSISTENTE VIRTUAL (SST INTELLIGENCE) - ISOLAMENTO DE USUÁRIOS
 # =====================================================================
 
 # ROTA 1: Criar NOVA conversa
 @app.post("/chat/create")
 async def create_chat(request: ChatRequest, db: Session = Depends(get_db)):
-    print(f"\n[LOG] Criando NOVA conversa. Mensagem: {request.message}", flush=True)
+    print(f"\n[LOG] Criando NOVA conversa. Usuário: {request.user_id} | Mensagem: {request.message}", flush=True)
     try:
-        new_conv = Conversation(title=request.message[:30] + "...")
+        # SALVA O DONO DA CONVERSA AQUI (request.user_id)
+        new_conv = Conversation(title=request.message[:30] + "...", user_id=request.user_id)
         db.add(new_conv)
         db.commit()
         db.refresh(new_conv)
@@ -114,6 +117,11 @@ async def create_chat(request: ChatRequest, db: Session = Depends(get_db)):
 async def reply_chat(chat_id: int, request: ChatRequest, db: Session = Depends(get_db)):
     print(f"\n[LOG] Respondendo na conversa {chat_id}. Mensagem: {request.message}", flush=True)
     try:
+        # Segurança: Verifica se a conversa existe e pertence ao usuário
+        conv = db.query(Conversation).filter(Conversation.id == chat_id, Conversation.user_id == request.user_id).first()
+        if not conv:
+            raise HTTPException(status_code=404, detail="Conversa não encontrada ou acesso negado")
+
         limite_data = datetime.utcnow() - timedelta(days=4)
         historico_db = db.query(Message).filter(
             Message.conversation_id == chat_id,
@@ -162,9 +170,13 @@ async def chat_stream(chat_id: int, request: ChatRequest, db: Session = Depends(
     try:
         user_message = request.message
         
-        print(f"--- DEBUG ---", flush=True)
-        print(f"Mensagem: {user_message}", flush=True)
-        print(f"Nome recebido: {request.user_name}", flush=True)
+        print(f"--- DEBUG STREAM ---", flush=True)
+        print(f"Usuário ID: {request.user_id}", flush=True)
+        
+        # Segurança: Verifica dono da conversa
+        conv = db.query(Conversation).filter(Conversation.id == chat_id, Conversation.user_id == request.user_id).first()
+        if not conv:
+            raise HTTPException(status_code=404, detail="Conversa não encontrada ou acesso negado")
 
         limite_data = datetime.utcnow() - timedelta(days=4)
         historico_db = db.query(Message).filter(
@@ -222,44 +234,53 @@ async def chat_stream(chat_id: int, request: ChatRequest, db: Session = Depends(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# ROTA 4: Listar o menu lateral de todas as conversas salvas
+# ROTA 4: Listar o menu lateral de todas as conversas salvas (AGORA FILTRADA!)
 @app.get("/conversations")
-async def get_conversations(db: Session = Depends(get_db)):
-    return db.query(Conversation).all()
+async def get_conversations(user_id: str, db: Session = Depends(get_db)):
+    # Essa é a rota que resolvia o problema do Samuel ver seu histórico!
+    return db.query(Conversation).filter(Conversation.user_id == user_id).all()
 
 
 # ROTA 5: Puxar o histórico completo de mensagens de um chat específico
 @app.get("/chat/{chat_id}/messages")
-async def get_messages(chat_id: int, db: Session = Depends(get_db)):
-    print(f"[LOG] Puxando histórico da conversa {chat_id}", flush=True)
+async def get_messages(chat_id: int, user_id: str, db: Session = Depends(get_db)):
+    print(f"[LOG] Puxando histórico da conversa {chat_id} para usuário {user_id}", flush=True)
+    # Primeiro verifica se a conversa pertence ao usuário
+    conv = db.query(Conversation).filter(Conversation.id == chat_id, Conversation.user_id == user_id).first()
+    if not conv:
+        raise HTTPException(status_code=404, detail="Acesso negado ou conversa não existe")
+        
     messages = db.query(Message).filter(Message.conversation_id == chat_id).order_by(Message.id.asc()).all()
     return messages
 
 
-# ROTA 6: Deletar uma conversa do histórico e suas mensagens associadas
+# ROTA 6: Deletar uma conversa do histórico
 @app.delete("/chat/{chat_id}")
-async def delete_chat(chat_id: int, db: Session = Depends(get_db)):
-    conv = db.query(Conversation).filter(Conversation.id == chat_id).first()
+async def delete_chat(chat_id: int, user_id: str, db: Session = Depends(get_db)):
+    # O filtro garante que o usuário só apaga se for o dono
+    conv = db.query(Conversation).filter(Conversation.id == chat_id, Conversation.user_id == user_id).first()
     if not conv:
-        raise HTTPException(status_code=404, detail="Conversa não encontrada")
+        raise HTTPException(status_code=404, detail="Conversa não encontrada ou acesso negado")
+    
     db.query(Message).filter(Message.conversation_id == chat_id).delete()
     db.delete(conv)
     db.commit()
     return {"message": "Conversa deletada com sucesso"}
 
 
-# ROTA 7: Renomear o título de uma conversa activa
+# ROTA 7: Renomear o título de uma conversa ativa
 @app.put("/chat/{chat_id}/rename")
 async def rename_chat(chat_id: int, request: RenameRequest, db: Session = Depends(get_db)):
-    conv = db.query(Conversation).filter(Conversation.id == chat_id).first()
+    conv = db.query(Conversation).filter(Conversation.id == chat_id, Conversation.user_id == request.user_id).first()
     if not conv:
-        raise HTTPException(status_code=404, detail="Conversa não encontrada")
+        raise HTTPException(status_code=404, detail="Conversa não encontrada ou acesso negado")
+    
     conv.title = request.title
     db.commit()
     return {"status": "success", "new_title": conv.title, "chat_id": chat_id}
 
 
-# ROTA 8: Canal de Denúncias Anónimo (Isolado e com foco em empatia e sigilo)
+# ROTA 8: Canal de Denúncias Anônimo (Fica intacto, pois denúncia não salva ID!)
 @app.post("/chat/anonymous-report")
 async def anonymous_report(request: ChatRequest):
     try:

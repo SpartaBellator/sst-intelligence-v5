@@ -15,7 +15,7 @@ import MarketingView from "@/components/sst/MarketingView";
 import { AmbientalView } from "@/components/sst/ambiental-view";
 import { useTheme } from "@/providers/theme-provider";
 
-// 🌟 IMPORTS DO SUPABASE ADICIONADOS AQUI:
+// 🌟 IMPORTS DO SUPABASE
 import { supabase } from "@/lib/supabaseClient"; 
 import { User } from "@supabase/supabase-js";
 
@@ -40,10 +40,13 @@ export default function SSTIntelligencePage() {
   const isDark = theme === "dark";
   const globalStyles = { overlay: "bg-black/20 dark:bg-white/10" };
 
-  // 🌟 NOVO ESTADO: Armazena os dados de login do usuário
+  // 🌟 ESTADO DO USUÁRIO DO SUPABASE
   const [user, setUser] = useState<User | null>(null);
 
-  // 🌟 NOVO EFEITO: Escuta o Supabase assim que a página carrega
+  // 🌟 DEFINIÇÃO DO ID LOGADO PARA AS REQUISIÇÕES
+  const userIdLogado = user?.id;
+
+  // 🌟 EFEITO DO SUPABASE: Escuta o login assim que a página carrega
   useEffect(() => {
     // Busca a sessão inicial
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -58,7 +61,7 @@ export default function SSTIntelligencePage() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // 🌟 NOVA FUNÇÃO: Dispara a tela oficial de login do Google
+  // 🌟 FUNÇÃO LOGIN DO GOOGLE
   const handleGoogleLogin = async () => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
@@ -77,6 +80,7 @@ export default function SSTIntelligencePage() {
   ]);
 
   const [chatState, setChatState] = useState<"new" | "conversation" | "my-items" | "commands" | "about" | "settings" | "report" | "marketing" | "ambiental">("new");
+
   // --- FUNÇÃO HANDLE SEND MESSAGE COMPLETA ---
   const handleSendMessage = async (text: string, image_data?: string | File, userName?: string) => {
     setIsLoading(true);
@@ -116,11 +120,18 @@ export default function SSTIntelligencePage() {
 
     try {
       // 4. Chamadas de Rede
+      
+      // Criamos um novo payload injetando o user_id para os POSTs
+      const payloadComUsuario = {
+          ...payload,
+          user_id: userIdLogado // INJETANDO O ID AQUI!
+      };
+
       if (isReport) {
         const response = await fetch("https://sst-intelligence-backend.onrender.com/chat/create", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
+          body: JSON.stringify(payloadComUsuario), 
         });
         if (!response.ok) throw new Error("Erro no servidor");
         const data = await response.json();
@@ -131,7 +142,7 @@ export default function SSTIntelligencePage() {
         const response = await fetch("https://sst-intelligence-backend.onrender.com/chat/create", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
+          body: JSON.stringify(payloadComUsuario), 
         });
         if (!response.ok) throw new Error("Erro no servidor");
         const data = await response.json();
@@ -146,7 +157,7 @@ export default function SSTIntelligencePage() {
         const response = await fetch(`https://sst-intelligence-backend.onrender.com/chat/${currentChatId}/stream`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
+          body: JSON.stringify(payloadComUsuario), 
         });
 
         if (!response.ok) throw new Error(`Erro do servidor: ${response.status}`);
@@ -155,7 +166,7 @@ export default function SSTIntelligencePage() {
         const decoder = new TextDecoder("utf-8");
 
         if (reader) {
-          setIsLoading(false); // Desliga o spinner de carregamento, pois o texto vai começar a aparecer
+          setIsLoading(false); 
           while (true) {
             const { done, value } = await reader.read();
             if (done) break;
@@ -185,7 +196,8 @@ export default function SSTIntelligencePage() {
       const response = await fetch(`https://sst-intelligence-backend.onrender.com/chat/${chatId}/rename`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: newTitle }),
+        // INJETANDO O ID NO CORPO DA REQUISIÇÃO (PUT)
+        body: JSON.stringify({ title: newTitle, user_id: userIdLogado }), 
       });
 
       if (!response.ok) throw new Error("Falha ao renomear conversa");
@@ -210,7 +222,8 @@ export default function SSTIntelligencePage() {
     setIsLoading(true);
 
     try {
-      const response = await fetch(`https://sst-intelligence-backend.onrender.com/chat/${id}/messages`);
+      // INJETANDO O ID NA URL DA REQUISIÇÃO (GET)
+      const response = await fetch(`https://sst-intelligence-backend.onrender.com/chat/${id}/messages?user_id=${userIdLogado}`);
       const data = await response.json();
       
       const formatTime = (dateString: string) => {
@@ -240,7 +253,8 @@ export default function SSTIntelligencePage() {
 
   const handleDeleteConversation = async (id: string) => {
     try {
-      const response = await fetch(`https://sst-intelligence-backend.onrender.com/chat/${id}`, { method: "DELETE" });
+      // INJETANDO O ID NA URL DA REQUISIÇÃO (DELETE)
+      const response = await fetch(`https://sst-intelligence-backend.onrender.com/chat/${id}?user_id=${userIdLogado}`, { method: "DELETE" });
       if (!response.ok) throw new Error("Erro ao deletar do servidor");
 
       if (currentChatId === id) {
@@ -275,7 +289,6 @@ export default function SSTIntelligencePage() {
       fileContent += `${msg.content}\n`;
       fileContent += `\n--------------------------------------------------\n\n`;
     });
-
     const blob = new Blob([fileContent], { type: "text/markdown;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");

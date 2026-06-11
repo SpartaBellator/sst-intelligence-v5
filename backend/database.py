@@ -12,9 +12,10 @@ Base = declarative_base()
 class Conversation(Base):
     __tablename__ = "conversations"
     id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String, index=True) # <-- AQUI ESTÁ O SEGREDO! Guarda o ID do Supabase
     title = Column(String, default="Nova Conversa")
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
-    messages = relationship("Message", back_populates="conversation")
+    messages = relationship("Message", back_populates="conversation", cascade="all, delete-orphan")
 
 class Message(Base):
     __tablename__ = "messages"
@@ -22,9 +23,7 @@ class Message(Base):
     conversation_id = Column(Integer, ForeignKey("conversations.id"))
     role = Column(String) # "user" ou "ai"
     content = Column(String)
-    conversation = relationship("Conversation", back_populates="messages")
     image_data = Column(String, nullable=True)
-
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     
     conversation = relationship("Conversation", back_populates="messages")
