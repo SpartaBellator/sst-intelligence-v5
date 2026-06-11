@@ -33,6 +33,7 @@ interface SidebarProps {
   onSettings: () => void;
   onReport: MouseEventHandler<HTMLButtonElement>;
   refreshTrigger?: number; 
+  userIdLogado?: string;
   user?: any;
 }
 
@@ -47,23 +48,35 @@ export function Sidebar({
   onSettings, 
   onReport, 
   refreshTrigger,
+  userIdLogado,
   user // 🌟 Garantindo que a prop user seja desestruturada aqui!
 }: SidebarProps) {
   const [conversas, setConversas] = useState<Conversation[]>([]);
 
   useEffect(() => {
-    const fetchConversations = async () => {
-      try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://sst-intelligence-backend.onrender.com'}/conversations?t=${Date.now()}`);
-        if (!response.ok) throw new Error('Falha na resposta');
-        const data = await response.json();
-        setConversas(data);
-      } catch (error) {
-        console.error("Aviso: Não foi possível carregar o histórico:", error);
-      }
-    };
-    fetchConversations();
-  }, [refreshTrigger]);
+  const fetchConversations = async () => {
+    // Se o usuário ainda não estiver logado, nem tenta buscar para não dar erro no backend
+    if (!userIdLogado) {
+      setConversas([]);
+      return;
+    }
+
+    try {
+      // Injetamos o user_id e mantemos o seu controle de tempo para evitar cache (?t=...)
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://sst-intelligence-backend.onrender.com';
+      const response = await fetch(`${baseUrl}/conversations?user_id=${userIdLogado}&t=${Date.now()}`);
+      
+      if (!response.ok) throw new Error('Falha na resposta');
+      const data = await response.json();
+      setConversas(data);
+    } catch (error) {
+      console.error("Aviso: Não foi possível carregar o histórico:", error);
+    }
+  };
+
+  fetchConversations();
+}, [refreshTrigger, userIdLogado]); // <-- ADICIONADO userIdLogado AQUI TAMBÉM!
+  
 
   // ==========================================
   // 🛡️ O PORTEIRO LÓGICO (INTERCEPTADOR DE CLIQUES)

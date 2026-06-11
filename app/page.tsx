@@ -379,6 +379,7 @@ export default function SSTIntelligencePage() {
            onAmbiental={() => setChatState("ambiental")}
            onReport={handleReport} 
            refreshTrigger={sidebarRefreshTrigger}
+           userIdLogado={userIdLogado}
            // 🌟 ENVIANDO O USUÁRIO PARA A SIDEBAR (OPCIONAL, mas muito útil para bloqueios)
            user={user} 
          />
