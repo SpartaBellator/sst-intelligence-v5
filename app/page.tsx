@@ -186,7 +186,7 @@ export default function SSTIntelligencePage() {
       }
     } catch (error) {
       console.error("Falha no fetch:", error);
-      setMessages((prev) => [...prev, { role: "assistant", content: "Erro de conexão.", userName: "Sistema", timestamp: new Date().toLocaleTimeString() }]);
+      setMessages((prev) => [...prev, { role: "assistant", content: "Lamentamos pelo ocorrido, SST Intelligence está carregando suas dependências de dados de resposta. Em cerca de 1 minuto faça outra pergunta e ela estará totalmente pronta para respondê-lo.", userName: "Sistema", timestamp: new Date().toLocaleTimeString() }]);
       setIsLoading(false);
     }
   };

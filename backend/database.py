@@ -3,9 +3,13 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
 import datetime
 
-DATABASE_URL = "sqlite:///./sst_intelligence.db"
+# 🌟 COLE A SUA URI DO SUPABASE AQUI DENTRO DAS ASPAS 🌟
+# Exemplo de como ela deve ficar: 
+# DATABASE_URL = "postgresql://postgres.xxxxxx:SuaSenhaAqui@aws-0-us-west-1.pooler.supabase.com:6543/postgres"
+DATABASE_URL = "postgresql://postgres.igyayvgnbmwudjyhfqqh:Python-SST/Intelligence-IA@aws-1-sa-east-1.pooler.supabase.com:5432/postgres"
 
-engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+# 🌟 CONEXÃO DIRETA: O PostgreSQL não usa o connect_args do SQLite!
+engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
